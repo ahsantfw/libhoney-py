@@ -264,3 +264,54 @@ class Client(object):
             fields = FieldHolder()
         builder = Builder(data, dyn_fields, fields, self)
         return builder
+
+    def create_marker(self, dataset, message, marker_type):
+        """Creates a marker in the specified dataset.
+        
+        Args:
+            dataset: Name of the dataset to create the marker in
+            message: Description of what the marker represents
+            marker_type: Type of the marker (e.g. "deploy", "incident")
+        
+        Returns:
+            dict: Response from Honeycomb API containing marker details
+        """
+        if not self.xmit:
+            self.log("tried to create marker on a closed or uninitialized libhoney client")
+            return None
+
+        marker_data = {
+            "_url": f"{self.api_host}/1/markers/{dataset}",
+            "_writekey": self.writekey,
+            "_data": {
+                "message": message,
+                "type": marker_type
+            }
+        }
+        
+        self.log("creating marker: dataset=%s message=%s type=%s", 
+                 dataset, message, marker_type)
+        return self.xmit.send_marker(marker_data)
+
+    def delete_marker(self, dataset, marker_id):
+        """Deletes a marker from the specified dataset using the configured transmission.
+        
+        Args:
+            dataset: Name of the dataset containing the marker
+            marker_id: ID of the marker to delete
+        
+        Returns:
+            True if deletion was successful
+        """
+        if not self.xmit:
+            self.log("tried to delete marker on a closed or uninitialized libhoney client")
+            return None
+
+        delete_data = {
+            "_url": f"{self.api_host}/1/markers/{dataset}/{marker_id}",
+            "_writekey": self.writekey
+        }
+        
+        self.log("deleting marker: dataset=%s marker_id=%s",
+                 dataset, marker_id)
+        return self.xmit.delete_marker(delete_data)

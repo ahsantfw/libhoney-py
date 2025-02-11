@@ -12,6 +12,7 @@ import sys
 import time
 import collections
 import concurrent.futures
+import requests  # Import at module level
 
 from platform import python_version
 from libhoney.version import VERSION
@@ -258,6 +259,59 @@ class Transmission():
         ''' return the responses queue on to which will be sent the response
         objects from each event send'''
         return self.responses
+
+    def send_marker(self, marker_data):
+        """Sends a marker creation request to Honeycomb.
+        
+        Args:
+            marker_data: dict containing marker details including _url and _writekey
+        
+        Returns:
+            dict: Response from Honeycomb API containing marker details
+        """
+        url = marker_data.pop('_url')
+        writekey = marker_data.pop('_writekey')
+        data = marker_data.pop('_data')
+        
+        json_data = {
+            "message": str(data["message"]),
+            "type": str(data["type"])
+        }
+        
+        try:
+            resp = requests.post(
+                url,
+                data=json.dumps(json_data),
+                headers={
+                    "X-Honeycomb-Team": writekey,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            return {"error": str(e)}
+
+    def delete_marker(self, delete_data):
+        """Sends a marker deletion request to Honeycomb.
+        
+        Args:
+            delete_data: dict containing marker ID and target URL
+        """
+        url = delete_data.pop('_url')
+        try:
+            resp = self.session.delete(
+                url,
+                timeout=10.0,
+                headers={
+                    "X-Honeycomb-Team": delete_data.pop('_writekey')
+                }
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as e:
+            return {"error": str(e)}
 
 
 # only define this class if tornado exists, otherwise we'll get NameError on gen

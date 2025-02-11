@@ -225,6 +225,50 @@ class TestClient(unittest.TestCase):
     def test_is_classic_with_ingest_key(self):
         self.assertEqual(IsClassicKey("hcxik_1234567890123456789012345678901234567890123456789012345678"), False)
 
+    def test_create_marker(self):
+        """Test creating a marker through the client"""
+        with client.Client(writekey="client_key", dataset="client_dataset") as c:
+            # explicitly use a different object for Transmission than is
+            # defined in setUp
+            c.xmit = mock.Mock()
+            
+            c.create_marker("test_dataset", "test deploy", "deploy")
+            
+            # Verify the transmission was called with correct data
+            c.xmit.send_marker.assert_called_with({
+                "_url": "https://api.honeycomb.io/1/markers/test_dataset",
+                "_writekey": "client_key",
+                "message": "test deploy",
+                "type": "deploy"
+            })
+
+    def test_delete_marker(self):
+        """Test deleting a marker through the client"""
+        with client.Client(writekey="client_key", dataset="client_dataset") as c:
+            c.xmit = mock.Mock()
+            
+            c.delete_marker("test_dataset", "marker123")
+            
+            # Verify the transmission was called with correct data
+            c.xmit.delete_marker.assert_called_with({
+                "_url": "https://api.honeycomb.io/1/markers/test_dataset/marker123",
+                "_writekey": "client_key"
+            })
+
+    def test_create_marker_without_transmission(self):
+        """Test creating a marker with uninitialized transmission"""
+        with client.Client(writekey="client_key", dataset="client_dataset") as c:
+            c.xmit = None
+            result = c.create_marker("test_dataset", "test deploy", "deploy")
+            self.assertIsNone(result)
+
+    def test_delete_marker_without_transmission(self):
+        """Test deleting a marker with uninitialized transmission"""
+        with client.Client(writekey="client_key", dataset="client_dataset") as c:
+            c.xmit = None
+            result = c.delete_marker("test_dataset", "marker123")
+            self.assertIsNone(result)
+
 
 class TestClientFlush(unittest.TestCase):
     ''' separate test class because we don't want to mock transmission'''
